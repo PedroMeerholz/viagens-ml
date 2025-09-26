@@ -1,0 +1,13 @@
+# Venv
+/venv
+
+# MLFlow
+/mlruns
+/mlartifacts
+
+# env
+.env
+
+# Data
+/data/raw/*.csv
+/data/raw/*.csv

@@ -33,7 +33,10 @@ Na raiz do projeto:
 
         /venv/bin/activate
 
-
-3. Instale as dependências
+4. Instale as dependências
 
         pip install -r requirements.txt
+
+5. Adicione os arquivos de dados no diretório `/data`.
+
+6. Crie um arquivo `.env` na raiz do projeto com base no arquivo `.env.example`
