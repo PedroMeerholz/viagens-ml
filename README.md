@@ -27,7 +27,7 @@ Na raiz do projeto:
 
     3.1. No Linux
 
-        source /venv/bin/activate
+         source venv/bin/activate
 
     3.2. No Windows
 
