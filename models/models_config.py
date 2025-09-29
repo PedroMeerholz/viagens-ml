@@ -19,6 +19,7 @@ from sklearn.discriminant_analysis import (
     LinearDiscriminantAnalysis,
     QuadraticDiscriminantAnalysis,
 )
+from xgboost import XGBClassifier
 
 MODELOS = {
     "RandomForest": RandomForestClassifier(random_state=42, class_weight="balanced"),
@@ -41,6 +42,7 @@ MODELOS = {
     "Perceptron": Perceptron(random_state=42, class_weight="balanced"),
     "BernoulliNB": BernoulliNB(),
     "ExtraTreeClassifier": ExtraTreeClassifier(random_state=42, class_weight="balanced"),
+    "XGBoost": XGBClassifier(random_state=42)
 }
 
 PARAM_GRIDS = {
@@ -113,4 +115,8 @@ PARAM_GRIDS = {
         'max_depth': [10, 20, None], 
         'min_samples_leaf': [1, 2]
     },
+    "XGBoost": {
+        'n_estimators': [100, 200], 
+        'max_depth': [10, 20, None]
+    }
 }
