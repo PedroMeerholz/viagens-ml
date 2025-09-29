@@ -9,11 +9,9 @@
 .env
 
 # Data
-/data/raw/*.csv
+/data/processed/images/*.png
+/data/processed/model_evaluation/*.csv
 
-/data/raw/*.txt
-
-#git ignore bloqueador ate da alma
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -221,6 +219,3 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
-
-
-
