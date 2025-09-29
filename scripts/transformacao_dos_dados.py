@@ -1,0 +1,150 @@
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import LabelEncoder
+from sklearn.utils import resample
+
+
+# Carregar o dataset enviado
+df = pd.read_csv('https://viagens-ml.s3.sa-east-1.amazonaws.com/dataset_viagens_brasil.csv')
+
+# Contagem de quantos 'erro' existem na coluna 'Prefere_Praia'
+num_erros = df['Prefere_Praia'].value_counts().get('erro', 0)
+
+# Contagem de qauntos 'cinco' existem na coluna 'Prefere_Cultura'
+num_cinco = df['Prefere_Cultura'].value_counts().get('cinco', 0)
+
+# Gera a lista de colunas que começam com "Prefere_"
+cols_prefere = [col for col in df.columns if col.startswith("Prefere_")]
+
+for col in cols_prefere:
+    # substitui "cinco" por 5 e "erro" por NaN
+    df[col] = df[col].replace({'cinco': '5', 'erro': np.nan})
+
+    # Converte para numérico (garante que '1', '2'... virem inteiros)
+    df[col] = pd.to_numeric(df[col], errors='coerce')
+
+    # Converte para inteiro
+    df[col] = df[col].astype('Int32')
+
+
+def handle_outliers_by_target(df, column, hard_lim_sup: float):
+    # Cria uma dataframe vazio para concatenar os dados tratados
+    outliers_filled = pd.DataFrame()
+
+    for city in df['Cidade_Destino'].unique():
+        # Filtra os dados da cidade com base no df base
+        df_city_data = df[df['Cidade_Destino'] == city].copy()
+
+        # Identifica os outliers com base no limite fornecido ou IQR
+        outliers = df_city_data[df_city_data[column] > hard_lim_sup]
+
+        # Remove os outliers do df da cidade
+        df_city_data = df_city_data.drop(outliers.index)
+    
+        # Calcula a média da coluna para a cidade
+        fill_value = int(df_city_data[column].mean())
+    
+        # Substitui os valores outliers pela média
+        outliers.loc[:, column] = fill_value
+
+        # Concatena os dados tratados
+        outliers_filled = pd.concat([outliers_filled, outliers], axis=0)
+
+        # Remove os outliers do df principal
+        df = df.drop(outliers.index)
+    
+    # Adiciona de volta os registros tratados
+    df = pd.concat([df, outliers_filled], axis=0).sort_index()
+    return df   
+
+df = handle_outliers_by_target(df, 'Idade', hard_lim_sup=100)
+df = handle_outliers_by_target(df, 'Custo_Desejado', hard_lim_sup=50000)
+
+
+def fillna_by_target(df, column, method='mean', default_value=5):
+    # Filtra os registros com dados nulos na coluna especificada
+    null_values = df[df[column].isnull()]
+
+    # Cria um dataframe vazio para concatenar os dados tratados
+    null_values_filled = pd.DataFrame()
+    
+    for city in df['Cidade_Destino'].unique():
+        df_city_data = df[df['Cidade_Destino'] == city]
+
+        # Calcula o valor de preenchimento
+        if method == 'mean':
+            mean_value = df_city_data[column].mean()
+            fill_value = int(mean_value) if pd.notna(mean_value) else default_value
+
+        elif method == 'mode':
+            mode_series = df_city_data[column].mode()
+            if not mode_series.empty and pd.notna(mode_series.iloc[0]):
+                fill_value = mode_series.iloc[0]
+            else:
+                mean_value = df_city_data[column].mean()
+                fill_value = int(mean_value) if pd.notna(mean_value) else default_value
+        else:
+            raise ValueError("method deve ser 'mean' ou 'mode'")
+
+        # Filtra os registros nulos da cidade (faz uma cópia explícita)
+        null_values_city_data = null_values[null_values['Cidade_Destino'] == city].copy()
+
+        # Preenche os valores nulos
+        null_values_city_data[column] = null_values_city_data[column].fillna(fill_value)
+
+        # Concatena os dados tratados
+        null_values_filled = pd.concat([null_values_filled, null_values_city_data], axis=0)
+
+    # Remove os registros nulos originais
+    df = df.drop(null_values.index, axis=0)
+
+    # Adiciona os tratados e ordena
+    df = pd.concat([df, null_values_filled], axis=0).sort_index()
+    return df
+
+
+df = fillna_by_target(df, 'Idade', 'mean')
+df = fillna_by_target(df, 'Custo_Desejado', 'mean')
+df = fillna_by_target(df, 'Prefere_Praia', 'mode')
+df = fillna_by_target(df, 'Prefere_Natureza', 'mode')
+df = fillna_by_target(df, 'Prefere_Festas', 'mode', 4)
+df = fillna_by_target(df, 'Prefere_Gastronomia', 'mode', 2)
+df = fillna_by_target(df, 'Prefere_Compras', 'mode')
+df = fillna_by_target(df, 'Prefere_Cultura', 'mode')
+
+
+for city in df['Cidade_Destino'].unique():
+    city_data = df[df['Cidade_Destino'] == city].copy()  
+    rows = city_data.shape[0]
+    if rows < 100:
+        city_data.loc[:, 'Cidade_Destino'] = 'Outros Destino'
+        df.drop(city_data.index, axis=0, inplace=True)
+        df = pd.concat([df, city_data], axis=0)
+
+# Separar a variável alvo
+target = "Cidade_Destino"
+
+# Dividir em classes
+df_majority = df[df[target] == df[target].value_counts().idxmax()]  # classe majoritária
+max_size = df[target].value_counts().max()
+
+# DataFrame final balanceado
+df_balanced = pd.DataFrame()
+
+for classe, subset in df.groupby(target):
+    # Repete as classes minoritárias até atingir a quantidade da classe majoritária
+    df_upsampled = resample(
+        subset,
+        replace=True,           # permite repetição
+        n_samples=max_size,     # iguala ao tamanho da classe majoritária
+        random_state=42
+    )
+    df_balanced = pd.concat([df_balanced, df_upsampled])
+
+# Embaralhar
+df_balanced = df_balanced.sample(frac=1, random_state=42).reset_index(drop=True)
+
+label_encoder = LabelEncoder()
+
+df['Cidade_Destino'] = label_encoder.fit_transform(df['Cidade_Destino'])
+cidades_originais = label_encoder.inverse_transform(df['Cidade_Destino'])
