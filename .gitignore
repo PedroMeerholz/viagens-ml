@@ -10,7 +10,13 @@
 
 # Data
 /data/processed/images/*.png
+/data/processed/model_evaluation/baseline/*.json
+/data/processed/model_evaluation/baseline/*.csv
+/data/processed/model_evaluation/baseline/models/*.pkl
 /data/processed/model_evaluation/*.csv
+/data/processed/model_evaluation/optimized/*.json
+/data/processed/model_evaluation/optimized/*.csv
+/data/processed/model_evaluation/optimized/models/*.pkl
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
