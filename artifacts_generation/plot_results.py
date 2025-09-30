@@ -6,7 +6,6 @@ from mlflow import log_artifact
 from dotenv import load_dotenv
 
 
-
 def plot_general_overview(model, results, best_index, best_score):
     load_dotenv()
     image_dir_path = environ['PLOT_DIR_PATH']
@@ -15,7 +14,7 @@ def plot_general_overview(model, results, best_index, best_score):
         lambda x: " | ".join([f"{k}={v}" for k, v in x.items()])
     )
 
-    plt.figure(figsize=(10, 6))    # Plotar o resultado médio da validação cruzada
+    plt.figure(figsize=(20, 12))    # Plotar o resultado médio da validação cruzada
     plt.plot(results['params_str'], results['mean_test_score'], marker='o', linestyle='-', color='blue')
     
     # Destacar a melhor pontuação
@@ -67,7 +66,7 @@ def plot_detailed_overview(model, results):
 
     # Ajusta o layout para evitar sobreposição
     plt.tight_layout()
-    plt.show()
+    # plt.show()
     
     # Salvar e Logar o gráfico
     plot_path = f"{image_dir_path}/grid_search_individual_metrics_lines.png"
@@ -87,7 +86,7 @@ def plot_confusion_matrix(model, confusion_matrix):
     plt.xlabel("Predicted Label")
     plt.ylabel("True Label")
     plt.tight_layout(pad=2.0)
-    plt.show()
+    # plt.show()
 
     # Salvar e Logar o gráfico
     plot_path = f"{image_dir_path}/confusion_matrix.png"
