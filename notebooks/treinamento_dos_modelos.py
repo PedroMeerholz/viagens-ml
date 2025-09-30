@@ -72,15 +72,15 @@ with mlflow.start_run(run_name="Baseline models"):
 
         # Treina o modelo
         clf.fit(x_train, y_train)
-        prediction, acc_test, precision_test, recall_test, f1_test = predict(clf, x_train, y_train)
+        prediction, acc_train, precision_train, recall_train, f1_train = predict(clf, x_train, y_train)
 
         # Faz o log das métricas de treino
         mlflow.log_metrics(
             {
-                'train_accuracy_score': acc_test,
-                'train_precision': precision_test,
-                'train_recall': recall_test,
-                'train_f1': f1_test
+                'train_accuracy_score': acc_train,
+                'train_precision': precision_train,
+                'train_recall': recall_train,
+                'train_f1': f1_train
             }
         )
 
@@ -162,13 +162,13 @@ with mlflow.start_run(run_name="Baseline models"):
         plot_detailed_overview(model_name, cv_results)
 
         # Faz o log das métricas de treino
-        prediction, acc_test, precision_test, recall_test, f1_test = predict(best_estimator, x_train, y_train)
+        prediction, acc_train, precision_train, recall_train, f1_train = predict(best_estimator, x_train, y_train)
         mlflow.log_metrics(
             {
-                'train_accuracy_score': acc_test,
-                'train_precision': precision_test,
-                'train_recall': recall_test,
-                'train_f1': f1_test
+                'train_accuracy_score': acc_train,
+                'train_precision': precision_train,
+                'train_recall': recall_train,
+                'train_f1': f1_train
             }
         )
 
