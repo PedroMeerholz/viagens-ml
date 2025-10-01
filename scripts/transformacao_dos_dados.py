@@ -1,3 +1,8 @@
+from dotenv import load_dotenv
+load_dotenv()
+
+import os
+import mlflow
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,27 +11,10 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.utils import resample
 
-import mlflow
-mlflow.set_tracking_uri('http://localhost:5000')
-mlflow.set_experiment('267582364504963619')
 
-import os
-from dotenv import load_dotenv
-load_dotenv()
-
-
-# Carregar o dataset enviado
-df = pd.read_csv('https://viagens-ml.s3.sa-east-1.amazonaws.com/dataset_viagens_brasil.csv')
-
-with mlflow.start_run(run_name="Viagens"):
+def run_data_preprocessing(df):
     with mlflow.start_run(run_name="Tratamento de Dados", nested=True):
         files_path = f"{os.environ['PLOT_DIR_PATH']}"
-
-        # Contagem de quantos 'erro' existem na coluna 'Prefere_Praia'
-        num_erros = df['Prefere_Praia'].value_counts().get('erro', 0)
-
-        # Contagem de qauntos 'cinco' existem na coluna 'Prefere_Cultura'
-        num_cinco = df['Prefere_Cultura'].value_counts().get('cinco', 0)
 
         # Gera a lista de colunas que começam com "Prefere_"
         cols_prefere = [col for col in df.columns if col.startswith("Prefere_")]
@@ -183,3 +171,19 @@ with mlflow.start_run(run_name="Viagens"):
         X = df_balanced.drop(['Cidade_Origem', 'Cidade_Destino'], axis=1)
         y = df_balanced['Cidade_Destino']
         x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        del df, df_balanced
+
+        # Converte o DataFrame de treino para dados do MLFlow e faz o log do arquivo
+        train_dataset = mlflow.data.from_pandas(
+            pd.concat([x_train, y_train], axis=1), source="train_data.csv", name="viagens-train", targets="Cidade_Destino"
+        )
+        mlflow.log_input(train_dataset, context='training')
+
+        # Converte o DataFrame de teste para dados do MLFlow e faz o log do arquivo
+        test_dataset = mlflow.data.from_pandas(
+            pd.concat([x_test, y_test], axis=1), source="test_data.csv", name="viagens-test", targets="Cidade_Destino"
+        )
+        mlflow.log_input(test_dataset, context='testing')
+        del train_dataset, test_dataset
+
+        return x_train, x_test, y_train, y_test, cidades_originais

@@ -95,10 +95,10 @@ with mlflow.start_run(run_name="Baseline models"):
             }
         )
 
-        # Exporta e faz o log do modelo
+        # Crio o log do modelo
         mlflow.sklearn.log_model(
             sk_model=clf,
-            name=model,
+            name=f'baseline_{model}',
             input_example=x_train[:5]
         )
 

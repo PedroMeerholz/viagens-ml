@@ -1,22 +1,16 @@
-import os
 from dotenv import load_dotenv
 load_dotenv()
 
+import os
+import mlflow
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import LabelEncoder
 from sklearn.feature_selection import f_classif, mutual_info_classif
 
-import mlflow
-mlflow.set_tracking_uri('http://localhost:5000')
-mlflow.set_experiment('267582364504963619')
 
-
-# Carregar o dataset enviado
-df = pd.read_csv('https://viagens-ml.s3.sa-east-1.amazonaws.com/dataset_viagens_brasil.csv')
-
-with mlflow.start_run(run_name="Viagens"):
+def run_data_analysis(df):
     with mlflow.start_run(run_name="Análise de Dados", nested=True):
         head = df.head()
         head.to_csv(f"{os.environ['ANALYSIS_RESULTS_DIR']}/sample.csv", index=False)
@@ -32,8 +26,7 @@ with mlflow.start_run(run_name="Viagens"):
         dtypes.columns = ['Coluna', 'Tipo']
         dtypes.to_csv(f"{os.environ['ANALYSIS_RESULTS_DIR']}/dtypes.csv", index=False)
         mlflow.log_artifact(
-            local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/dtypes.csv",
-            artifact_path="data_analysis"
+            local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/dtypes.csv"
         )
 
         colunas_numericas = ['Idade', 'Custo_Desejado', 'Prefere_Praia', 'Prefere_Natureza',
@@ -48,8 +41,7 @@ with mlflow.start_run(run_name="Viagens"):
         null_values_by_column.columns = ['Coluna', 'Qtd. Nulos']
         null_values_by_column.to_csv(f"{os.environ['ANALYSIS_RESULTS_DIR']}/null_info.csv", index=False)
         mlflow.log_artifact(
-            local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/null_info.csv",
-            artifact_path="data_analysis"
+            local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/null_info.csv"
         )
 
         null_rows = null_values_by_column['Qtd. Nulos'].sum()
@@ -57,8 +49,7 @@ with mlflow.start_run(run_name="Viagens"):
         basic_info_df = pd.DataFrame(list(basic_info.items()), columns=['Informação', 'Valor'])
         basic_info_df.to_csv(f"{os.environ['ANALYSIS_RESULTS_DIR']}/basic_info.csv", index=False)
         mlflow.log_artifact(
-            local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/basic_info.csv",
-            artifact_path="data_analysis"
+            local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/basic_info.csv"
         )
 
         duplicated_rows = df.duplicated().sum()
@@ -67,8 +58,7 @@ with mlflow.start_run(run_name="Viagens"):
         cidades_destino_info = df["Cidade_Destino"].value_counts()
         cidades_destino_info.to_csv(f"{os.environ['ANALYSIS_RESULTS_DIR']}/contagem_de_classes.csv", index=True)
         mlflow.log_artifact(
-            local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/contagem_de_classes.csv",
-            artifact_path="data_analysis"
+            local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/contagem_de_classes.csv"
         )
 
         # Histogramas
@@ -82,12 +72,12 @@ with mlflow.start_run(run_name="Viagens"):
         histogram(df['Idade'], "Distribuição da Idade", bins=40, kde=True, color="skyblue", path_to_save=f"{os.environ['ANALYSIS_RESULTS_DIR']}/histograma_idade.png")
         mlflow.log_artifact(
             local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/histograma_idade.png",
-            artifact_path="data_analysis/histograma"
+            artifact_path="histograma"
         )
         histogram(df['Custo_Desejado'], "Distribuição da Custo Desejado", bins=40, kde=True, color="skyblue", path_to_save=f"{os.environ['ANALYSIS_RESULTS_DIR']}/histograma_custo_desejado.png")
         mlflow.log_artifact(
             local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/histograma_custo_desejado.png",
-            artifact_path="data_analysis/histograma"
+            artifact_path="histograma"
         )
         
         # Boxplots
@@ -101,12 +91,12 @@ with mlflow.start_run(run_name="Viagens"):
         boxplot(x=df['Idade'], title='Boxplot Idade', path_to_save=f"{os.environ['ANALYSIS_RESULTS_DIR']}/boxplot_idade.png")
         mlflow.log_artifact(
             local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/boxplot_idade.png",
-            artifact_path="data_analysis/boxplot"
+            artifact_path="boxplot"
         )
         boxplot(x=df['Custo_Desejado'], title='Boxplot Custo Desejado', path_to_save=f"{os.environ['ANALYSIS_RESULTS_DIR']}/boxplot_custo_desejado.png")
         mlflow.log_artifact(
             local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/boxplot_custo_desejado.png",
-            artifact_path="data_analysis/boxplot"
+            artifact_path="boxplot"
         )
 
         # Gráficos de Barra
@@ -122,37 +112,37 @@ with mlflow.start_run(run_name="Viagens"):
         barplot(df['Prefere_Praia'], 'Prefere_Praia', 'Contagem', 'Distribuição das Preferências por Praia', path_to_save=f"{os.environ['ANALYSIS_RESULTS_DIR']}/barplot_prefere_praia.png")
         mlflow.log_artifact(
             local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/barplot_prefere_praia.png",
-            artifact_path="data_analysis/barplot"
+            artifact_path="barplot"
         )
         barplot(df['Prefere_Natureza'], 'Prefere_Natureza', 'Contagem', 'Distribuição das Preferências por Natureza', path_to_save=f"{os.environ['ANALYSIS_RESULTS_DIR']}/barplot_prefere_natureza.png")
         mlflow.log_artifact(
             local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/barplot_prefere_natureza.png",
-            artifact_path="data_analysis/barplot"
+            artifact_path="barplot"
         )
         barplot(df['Prefere_Cultura'], 'Prefere_Cultura', 'Contagem', 'Distribuição das Preferências por Cultura', path_to_save=f"{os.environ['ANALYSIS_RESULTS_DIR']}/barplot_prefere_cultura.png")
         mlflow.log_artifact(
             local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/barplot_prefere_cultura.png",
-            artifact_path="data_analysis/barplot"
+            artifact_path="barplot"
         )
         barplot(df['Prefere_Festas'], 'Prefere_Festas', 'Contagem', 'Distribuição das Preferências por Festas', path_to_save=f"{os.environ['ANALYSIS_RESULTS_DIR']}/barplot_prefere_festas.png")
         mlflow.log_artifact(
             local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/barplot_prefere_festas.png",
-            artifact_path="data_analysis/barplot"
+            artifact_path="barplot"
         )
         barplot(df['Prefere_Gastronomia'], 'Prefere_Gastronomia', 'Contagem', 'Distribuição das Preferências por Gastronomia', path_to_save=f"{os.environ['ANALYSIS_RESULTS_DIR']}/barplot_prefere_gastronomia.png")
         mlflow.log_artifact(
             local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/barplot_prefere_gastronomia.png",
-            artifact_path="data_analysis/barplot"
+            artifact_path="barplot"
         )
         barplot(df['Prefere_Compras'], 'Prefere_Compras', 'Contagem', 'Distribuição das Preferências por Viagem de Compras', path_to_save=f"{os.environ['ANALYSIS_RESULTS_DIR']}/barplot_prefere_compras.png")
         mlflow.log_artifact(
             local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/barplot_prefere_compras.png",
-            artifact_path="data_analysis/barplot"
+            artifact_path="barplot"
         )
         barplot(df['Cidade_Destino'], 'Cidade_Destino', 'Contagem', 'Distribuição das Preferências por Cidade Destino', path_to_save=f"{os.environ['ANALYSIS_RESULTS_DIR']}/barplot_prefere_destino.png")
         mlflow.log_artifact(
             local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/barplot_prefere_destino.png",
-            artifact_path="data_analysis/barplot"
+            artifact_path="barplot"
         )
 
         # Importância das Features
@@ -188,7 +178,7 @@ with mlflow.start_run(run_name="Viagens"):
         results_sorted.to_csv(f"{os.environ['ANALYSIS_RESULTS_DIR']}/anova/anova_ftest.csv", index=False)
         mlflow.log_artifact(
             local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/anova/anova_ftest.csv",
-            artifact_path="data_analysis/anova"    
+            artifact_path="anova"    
         )
 
         class_mapping = dict()
@@ -199,5 +189,5 @@ with mlflow.start_run(run_name="Viagens"):
         class_mapping_df.to_csv(f"{os.environ['ANALYSIS_RESULTS_DIR']}/anova/anova_class_mapping.csv", index=False)
         mlflow.log_artifact(
             local_path=f"{os.environ['ANALYSIS_RESULTS_DIR']}/anova/anova_class_mapping.csv",
-            artifact_path="data_analysis/anova"
+            artifact_path="anova"
         )
