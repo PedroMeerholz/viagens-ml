@@ -4,7 +4,6 @@ from pathlib import Path
 import streamlit as st
 import pandas as pd
 import joblib
-import os
 
 # Caminhos
 DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "raw" / "dataset_viagens_brasil.csv"
@@ -14,6 +13,7 @@ ENCODER_PATH = Path(__file__).resolve().parents[1] / "models" / "label_encoder.p
 MIN_DESTINO_SAMPLE = 100
 DESTINO_OUTROS_LABEL = "Outros Destino"
 
+# ---------------- FUNÇÕES AUXILIARES ----------------
 def normalize_destino_label(city: str, count: int, min_samples: int) -> str:
     city = (city or "").strip()
     if not city:
@@ -89,106 +89,153 @@ def decode_destination_label(pred_code, destino_decoder):
 
     return str(pred_code), False
 
+# ---------------- INTERFACE PRINCIPAL ----------------
 def build_form():
-    st.title("🧭 Recomendador de Viagens")
-    st.write(
-        "Preencha seu perfil e preferências de viagem. O modelo irá sugerir um destino com base nas suas escolhas."
+    st.markdown(
+        """
+        <h1 style="text-align:center; color:white; font-size:42px;">
+            🧭 Recomendador de Viagens
+        </h1>
+        <p style="text-align:center; color:#white; font-size:18px;">
+            Descubra o destino ideal com base no seu perfil e preferências ✈️
+        </p>
+        <hr>
+        """,
+        unsafe_allow_html=True
     )
 
     origem_options, destino_labels, destino_decoder = load_city_metadata()
 
-    with st.form("travel_preferences"):
-        idade = st.number_input("Idade", min_value=0, max_value=120, value=30, step=1)
+    # Controlador de aba ativa
+    if "active_tab" not in st.session_state:
+        st.session_state["active_tab"] = "📝 Entrada"
 
-        if origem_options:
-            origem_select = ["Selecione..."] + origem_options
-            cidade_origem = st.selectbox("Cidade de origem", origem_select, index=0)
+    # Criar menu de navegação manual 
+    menu = st.radio(
+        "📌 Navegação",
+        ["📝 Entrada", "🎯 Resultado", "ℹ️ Detalhes"],
+        index=["📝 Entrada", "🎯 Resultado", "ℹ️ Detalhes"].index(st.session_state["active_tab"]),
+        horizontal=True
+    )
+
+    st.session_state["active_tab"] = menu  # Atualiza aba ativa
+
+    # ------------------ ENTRADA ------------------
+    if st.session_state["active_tab"] == "📝 Entrada":
+        with st.form("travel_preferences"):
+            col1, col2 = st.columns(2)
+
+            with col1:
+                idade = st.number_input("👤 Idade", min_value=0, max_value=120, value=30, step=1)
+                if origem_options:
+                    origem_select = ["Selecione..."] + origem_options
+                    cidade_origem = st.selectbox("🏠 Cidade de origem", origem_select, index=0)
+                else:
+                    cidade_origem = st.text_input("🏠 Cidade de origem")
+                custo_desejado = st.number_input("💰 Custo desejado (R$)", min_value=0.0, step=100.0, format="%.2f")
+
+            with col2:
+                st.markdown("**✨ Preferências (0 a 5)**")
+                prefere_praia = st.slider("🏖️ Praia", 0, 5, 3)
+                prefere_natureza = st.slider("🌳 Natureza", 0, 5, 3)
+                prefere_cultura = st.slider("🎭 Cultura", 0, 5, 3)
+                prefere_festas = st.slider("🎉 Festas", 0, 5, 3)
+                prefere_gastronomia = st.slider("🍷 Gastronomia", 0, 5, 3)
+                prefere_compras = st.slider("🛍️ Compras", 0, 5, 3)
+
+            submitted = st.form_submit_button("🔍 Calcular Destino")
+
+        if submitted:
+            if origem_options and cidade_origem == "Selecione...":
+                st.warning("⚠️ Selecione uma cidade de origem.")
+                return
+            if not origem_options and not cidade_origem.strip():
+                st.warning("⚠️ Informe uma cidade de origem.")
+                return
+
+            # Features do usuário
+            features = {
+                "Idade": int(idade),
+                "Cidade_Origem": cidade_origem.strip(),
+                "Custo_Desejado": float(custo_desejado),
+                "Prefere_Praia": int(prefere_praia),
+                "Prefere_Natureza": int(prefere_natureza),
+                "Prefere_Cultura": int(prefere_cultura),
+                "Prefere_Festas": int(prefere_festas),
+                "Prefere_Gastronomia": int(prefere_gastronomia),
+                "Prefere_Compras": int(prefere_compras),
+            }
+
+            st.session_state["features"] = features
+            st.session_state["destino_labels"] = destino_labels
+            st.session_state["destino_decoder"] = destino_decoder
+
+            # Forçar troca para aba Resultado
+            st.session_state["active_tab"] = "🎯 Resultado"
+            st.rerun()
+
+    # ------------------ RESULTADO ------------------
+    elif st.session_state["active_tab"] == "🎯 Resultado":
+        if "features" not in st.session_state:
+            st.info("➡️ Preencha o formulário na aba **Entrada**.")
         else:
-            cidade_origem = st.text_input("Cidade de origem")
+            features = st.session_state["features"]
+            destino_decoder = st.session_state["destino_decoder"]
 
-        custo_desejado = st.number_input(
-            "Custo desejado (R$)", min_value=0.0, step=100.0, format="%.2f"
+            model_input = pd.DataFrame([features]).drop(columns=["Cidade_Origem"])
+            if not MODEL_PATH.exists():
+                st.error("❌ Modelo não encontrado.")
+                return
+
+            with st.spinner("🔮 Carregando modelo e prevendo..."):
+                model = joblib.load(MODEL_PATH)
+                pred = model.predict(model_input)[0]
+                destino, _ = decode_destination_label(pred, destino_decoder)
+
+            st.markdown(
+                f"""
+                <div style="background: linear-gradient(135deg, #2ECC71, #27AE60);
+                            padding:20px; border-radius:15px; color:white;
+                            text-align:center; font-size:22px; font-weight:bold;
+                            box-shadow: 2px 2px 12px rgba(0,0,0,0.3);">
+                    🌍 Destino previsto:<br><span style="font-size:28px;">{destino}</span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+    # ------------------ DETALHES ------------------
+    elif st.session_state["active_tab"] == "ℹ️ Detalhes":
+        st.markdown("### ℹ️ Sobre este recomendador")
+        st.write(
+            "Este aplicativo usa um modelo de IA treinado com dados de viagens no Brasil. "
+            "Com base nas suas preferências, ele recomenda um destino turístico."
         )
 
-        st.markdown("**Preferências de viagem (0 a 5)**")
+        if "destino_labels" in st.session_state:
+            st.markdown("**📍 Destinos considerados pelo modelo:**")
+            st.write(", ".join(st.session_state["destino_labels"]))
 
-        # Usando sliders para representar avaliação de 0 a 5
-        prefere_praia = st.slider("Prefere praia", 0, 5, 3)
-        prefere_natureza = st.slider("Prefere natureza", 0, 5, 3)
-        prefere_cultura = st.slider("Prefere cultura", 0, 5, 3)
-        prefere_festas = st.slider("Prefere festas", 0, 5, 3)
-        prefere_gastronomia = st.slider("Prefere gastronomia", 0, 5, 3)
-        prefere_compras = st.slider("Prefere compras", 0, 5, 3)
-
-        submitted = st.form_submit_button("🎯 Prever destino")
-
-    if submitted:
-        if origem_options and cidade_origem == "Selecione...":
-            st.warning("Selecione uma cidade de origem.")
-            return
-
-        if not origem_options and not cidade_origem.strip():
-            st.warning("Informe uma cidade de origem.")
-            return
-
-        # Dicionário com os dados do usuário
-        features = {
-            "Idade": int(idade),
-            "Cidade_Origem": cidade_origem.strip(),
-            "Custo_Desejado": float(custo_desejado),
-            "Prefere_Praia": int(prefere_praia),
-            "Prefere_Natureza": int(prefere_natureza),
-            "Prefere_Cultura": int(prefere_cultura),
-            "Prefere_Festas": int(prefere_festas),
-            "Prefere_Gastronomia": int(prefere_gastronomia),
-            "Prefere_Compras": int(prefere_compras),
-        }
-
-        # Garantir que todos os valores de preferência estão entre 0 e 5
-        PREF_COLS = [
-            "Prefere_Praia", "Prefere_Natureza", "Prefere_Cultura",
-            "Prefere_Festas", "Prefere_Gastronomia", "Prefere_Compras"
-        ]
-
-        for col in PREF_COLS:
-            val = features[col]
-            if not isinstance(val, int) or not (0 <= val <= 5):
-                features[col] = 0  # ou np.nan, se preferir avisar
-
-        # Mostra a entrada formatada
-        st.subheader("📦 Entrada do usuário:")
-        st.json(features)
-
-        # Prepara para o modelo (remove Cidade_Origem se não for usada)
-        model_input = pd.DataFrame([features]).drop(columns=["Cidade_Origem"])
-
-        # Carrega e roda o modelo
-        if not MODEL_PATH.exists():
-            st.error("Modelo não encontrado. Verifique se o arquivo decision_tree.pkl está na pasta correta.")
-            return
-
-        with st.spinner("Carregando modelo e realizando previsão..."):
-            model = joblib.load(MODEL_PATH)
-            pred = model.predict(model_input)[0]
-            destino, decoded_with_encoder = decode_destination_label(pred, destino_decoder)
-            st.success(f"🌍 Destino previsto: **{destino}**")
-            if not decoded_with_encoder and destino != str(pred):
-                st.caption("Destino decodificado a partir do dataset base.")
-            elif destino == str(pred):
-                st.info("Nao foi possivel converter o codigo do destino. Verifique o dataset ou o arquivo de codificacao.")
-
-        if destino_labels:
-            st.caption("📍 Destinos considerados pelo modelo:")
-            st.write(", ".join(destino_labels))
-
+# ---------------- MAIN ----------------
 def main():
-    st.set_page_config(
-        page_title="Recomendador de Viagens",
-        page_icon="✈️",
-        layout="centered",
-    )
-    build_form()
+    st.set_page_config(page_title="Recomendador de Viagens", page_icon="✈️", layout="wide")
 
+    st.sidebar.image("https://cdn-icons-png.flaticon.com/512/69/69906.png", width=80)
+    st.sidebar.title("Recomendador de Viagens")
+    st.sidebar.markdown("✨ Preencha seus dados e descubra para onde viajar no Brasil!")
+    st.sidebar.markdown(
+        """
+        <div style="background-color:#E74C3C; padding:15px; border-radius:10px;
+                    color:white; font-weight:bold; text-align:center;
+                    box-shadow:2px 2px 10px rgba(0,0,0,0.3);">
+            ⚠️ Este conteúdo é destinado apenas para fins educacionais.<br>
+            Os dados exibidos são ilustrativos e podem não corresponder a situações reais.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    build_form()
 
 if __name__ == "__main__":
     main()
