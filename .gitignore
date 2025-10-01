@@ -17,6 +17,9 @@
 /data/processed/model_evaluation/optimized/*.json
 /data/processed/model_evaluation/optimized/*.csv
 /data/processed/model_evaluation/optimized/models/*.pkl
+/data/analysis/*.csv
+/data/analysis/*.png
+/data/analysis/anova
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
