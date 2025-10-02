@@ -12,16 +12,16 @@ import mlflow
 import json
 import optuna
 from sklearn.metrics import accuracy_score
-from models.models_config import MODELOS, PARAM_GRIDS
-from models.tuning_evaluate import predict, get_classification_report, get_confusion_matrix
-from artifacts_generation.plot_results import plot_detailed_overview, plot_general_overview, plot_train_vs_val_overview, plot_confusion_matrix
+from config.models_config import MODELOS, PARAM_GRIDS
+from src.tuning_evaluate import predict, get_classification_report, get_confusion_matrix
+from reports.generate_plots import plot_detailed_overview, plot_general_overview, plot_train_vs_val_overview, plot_confusion_matrix
 
 
 def run_model_tuning(x_train, y_train, x_val, y_val, x_test, y_test, label_encoder):
     with mlflow.start_run(run_name="Treinamento e Otimização de Modelos", nested=True):
         baseline_report_dir_path = os.environ['BASELINE_RESULTS_DIR']
 
-        models = list(MODELOS.keys())
+        models = list(MODELOS.keys())[:1]
         baseline_models_info = dict()
         # Faz o treinamento de cada modelo baseline configurado em MODELOS
         for model in models:
@@ -44,7 +44,6 @@ def run_model_tuning(x_train, y_train, x_val, y_val, x_test, y_test, label_encod
 
                 # Faz a previsão e o log das métricas de teste
                 prediction, acc_test, precision_test, recall_test, f1_test = predict(clf, x_test, y_test)
-                print(f'Baseline test acc:{acc_test}')
                 test_metrics = {
                     'test_accuracy_score': acc_test,
                     'test_precision': precision_test,

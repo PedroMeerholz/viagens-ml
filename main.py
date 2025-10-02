@@ -1,7 +1,7 @@
 import pandas as pd
-from analise_de_dados import run_data_analysis
-from transformacao_dos_dados import run_data_preprocessing
-from model_tuning import run_model_tuning
+from src.analise_de_dados import run_data_analysis
+from src.transformacao_dos_dados import run_data_preprocessing
+from src.model_tuning import run_model_tuning
 import mlflow
 mlflow.set_tracking_uri('http://localhost:5000')
 mlflow.set_experiment('267582364504963619')
