@@ -164,13 +164,12 @@ def run_data_preprocessing(df):
         df_balanced = df_balanced.sample(frac=1, random_state=42).reset_index(drop=True)
 
         label_encoder = LabelEncoder()
-
         df_balanced['Cidade_Destino'] = label_encoder.fit_transform(df_balanced['Cidade_Destino'])
-        cidades_originais = label_encoder.inverse_transform(df_balanced['Cidade_Destino'])
 
         X = df_balanced.drop(['Cidade_Origem', 'Cidade_Destino'], axis=1)
         y = df_balanced['Cidade_Destino']
-        x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        x_temp, x_val, y_temp, y_val = train_test_split(X, y, test_size=0.15, random_state=42)
+        x_train, x_test, y_train, y_test = train_test_split(x_temp, y_temp, test_size=0.2, random_state=42)
         del df, df_balanced
 
         # Converte o DataFrame de treino para dados do MLFlow e faz o log do arquivo
@@ -179,11 +178,16 @@ def run_data_preprocessing(df):
         )
         mlflow.log_input(train_dataset, context='training')
 
+        val_dataset = mlflow.data.from_pandas(
+            pd.concat([x_val, y_val], axis=1), source="val_data.csv", name="viagens-val", targets="Cidade_Destino"
+        )
+        mlflow.log_input(val_dataset, context='validation')
+
         # Converte o DataFrame de teste para dados do MLFlow e faz o log do arquivo
         test_dataset = mlflow.data.from_pandas(
             pd.concat([x_test, y_test], axis=1), source="test_data.csv", name="viagens-test", targets="Cidade_Destino"
         )
         mlflow.log_input(test_dataset, context='testing')
-        del train_dataset, test_dataset
+        del train_dataset, val_dataset, test_dataset
 
-        return x_train, x_test, y_train, y_test, cidades_originais
+        return x_train, x_val, x_test, y_train, y_val, y_test
