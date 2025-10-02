@@ -11,7 +11,7 @@ try:
 except (NameError, IndexError):
     APP_ROOT = Path.cwd()
 
-DATA_PATH = APP_ROOT / "data" / "raw" / "dataset_viagens_brasil.csv"
+DATA_PATH = 'https://viagens-ml.s3.sa-east-1.amazonaws.com/dataset_viagens_brasil.csv'
 MODEL_PATH = APP_ROOT / "models" / "xgboost.pkl"
 
 MIN_DESTINO_SAMPLE = 100
@@ -41,19 +41,12 @@ def build_destino_decoder(destino_counts: Counter, min_samples: int):
 def load_city_metadata(min_samples: int = MIN_DESTINO_SAMPLE):
     origem = set()
     destino_counts = Counter()
-    if not DATA_PATH.exists():
-        st.error(f"⚠️ Arquivo de dados não encontrado em: {DATA_PATH}")
-        return sorted(origem), [], {}
 
-    with DATA_PATH.open(encoding="utf-8") as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            origem_cidade = (row.get("Cidade_Origem") or "").strip()
-            destino_cidade = (row.get("Cidade_Destino") or "").strip()
-            if origem_cidade:
-                origem.add(origem_cidade)
-            if destino_cidade:
-                destino_counts[destino_cidade] += 1
+    df = pd.read_csv(DATA_PATH, encoding="utf-8")
+    if "Cidade_Origem" in df.columns:
+        origem.update(df["Cidade_Origem"].dropna().str.strip().unique())
+    if "Cidade_Destino" in df.columns:
+        destino_counts.update(df["Cidade_Destino"].dropna().str.strip().value_counts().to_dict())
 
     destinos_principais = sorted(
         [city for city, count in destino_counts.items() if count >= min_samples]
