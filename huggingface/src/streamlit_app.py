@@ -4,8 +4,6 @@ from pathlib import Path
 import streamlit as st
 import pandas as pd
 import joblib
-import requests
-from io import StringIO
 
 # --- CONFIGURAÇÃO DE CAMINHOS ---
 try:
@@ -15,7 +13,7 @@ except (NameError, IndexError):
 
 # --- CARREGAR DATASET DO S3 ---
 DATA_PATH = 'https://viagens-ml.s3.sa-east-1.amazonaws.com/dataset_viagens_brasil.csv'
-MODEL_PATH = APP_ROOT / "models" / "xgboost.pkl"
+MODEL_PATH = APP_ROOT / "src/xgboost.pkl"
 
 MIN_DESTINO_SAMPLE = 100
 DESTINO_OUTROS_LABEL = "Outros Destino"

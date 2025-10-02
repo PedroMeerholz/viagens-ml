@@ -144,6 +144,8 @@ python main.py
 - Entradas: idade, cidade de origem, custo desejado e preferências 0–5
 - Saída: destino recomendado; exibe também lista de destinos considerados
 
+⚠️ **Lembrete**: O código do diretório `huggingface/` está configurado para rodar apenas no Hugging Face Spaces e não localmente.
+
 Para acessar a interface no Hugging Face, acesse:
 ```bash
 https://huggingface.co/spaces/pedromeerholz/viagens-ml
