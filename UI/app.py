@@ -4,13 +4,16 @@ from pathlib import Path
 import streamlit as st
 import pandas as pd
 import joblib
+import requests
+from io import StringIO
 
-# --- CONFIGURAÇÃO DE CAMINHOS (ROBUSTA) ---
+# --- CONFIGURAÇÃO DE CAMINHOS ---
 try:
     APP_ROOT = Path(__file__).resolve().parents[1]
 except (NameError, IndexError):
     APP_ROOT = Path.cwd()
 
+# --- CARREGAR DATASET DO S3 ---
 DATA_PATH = 'https://viagens-ml.s3.sa-east-1.amazonaws.com/dataset_viagens_brasil.csv'
 MODEL_PATH = APP_ROOT / "models" / "xgboost.pkl"
 
@@ -172,7 +175,7 @@ def pagina_detalhes():
     st.markdown("### Sobre o Recomendador")
     st.write(
         """
-        Este aplicativo utiliza um modelo de Machine Learning (Árvore de Decisão) treinado com um 
+        Este aplicativo utiliza um modelo de Inteligência Artificial treinado com um 
         conjunto de dados de viagens fictícias no Brasil. Ele analisa as preferências de perfil, 
         custo e interesses para sugerir o destino de viagem mais provável para o usuário.
         """
@@ -200,12 +203,12 @@ def main():
             align-items: center;
         }
         div[data-testid="stFormSubmitButton"] > button {
-            width: 280px; /* Aumentado */
-            height: 70px; /* Aumentado */
+            width: 280px; 
+            height: 70px; 
             justify-content: center;
-            font-size: 24px; /* Aumentado */
+            font-size: 24px; 
             font-weight: bold;
-            border-radius: 15px; /* Aumentado */
+            border-radius: 15px; 
             background: linear-gradient(135deg, #ff416c, #ff4b2b);
             color: white;
             border: none;
@@ -222,33 +225,57 @@ def main():
             justify-content: center;
             align-items: center;
         }
-        /* Ajuste para botões da sidebar e outros botões de ação */
         div[data-testid="stButton"] > button {
-            width: 100%; /* Para botões na sidebar com use_container_width */
-            height: 70px; /* Aumentado */
-            font-size: 24px; /* Aumentado */
+            width: 100%; 
+            height: 70px;
+            font-size: 24px;
             font-weight: bold;
-            border-radius: 15px; /* Aumentado */
+            border-radius: 15px; 
             background: linear-gradient(135deg, #ff416c, #ff4b2b);
             color: white;
             border: none;
             box-shadow: 0 8px 25px rgba(255, 65, 108, 0.6);
             transition: all 0.3s ease;
-            margin-top: 20px; /* Ajuste na margem */
+            margin-top: 20px; 
         }
         div[data-testid="stButton"] > button:hover {
             transform: scale(1.05);
             box-shadow: 0 12px 35px rgba(255, 65, 108, 0.8);
         }
-        
-        /* Específico para botões que não estão na sidebar (para manter a largura fixa) */
         div[data-testid="stAppViewContainer"] div[data-testid="stButton"] > button {
             width: 280px;
         }
     </style>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
+    # --- ALERTA INICIAL ---
+    if 'disclaimer_accepted' not in st.session_state:
+        st.session_state.disclaimer_accepted = False
 
+    if not st.session_state.disclaimer_accepted:
+        _, mid_col, _ = st.columns([1, 2, 1])
+        with mid_col:
+            st.markdown(
+                """
+                <div style="background-color: #262730; padding: 30px; border-radius: 15px; border: 1px solid #ff4b2b; margin-top: 10vh;">
+                    <h2 style="text-align: center; color: #ff4b2b;">⚠️ Aviso Importante</h2>
+                    <p style="text-align: center; font-size: 18px; color: white;">
+                        Este conteúdo é destinado apenas para fins educacionais. 
+                        Os dados exibidos são ilustrativos e podem não corresponder a situações reais.
+                    </p>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            st.markdown("<br>", unsafe_allow_html=True)
+            _, btn_col, _ = st.columns([2, 1, 2])
+            with btn_col:
+                if st.button("OK", use_container_width=True):
+                    st.session_state.disclaimer_accepted = True
+                    st.rerun()
+        return  # Impede o resto de rodar antes da aceitação
+
+    # --- SIDEBAR ---
     with st.sidebar:
         st.image("https://cdn-icons-png.flaticon.com/512/69/69906.png", width=100)  
         st.title("Recomendador de Viagens")
