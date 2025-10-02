@@ -76,6 +76,36 @@ Seleção e otimização:
 - Após avaliar os modelos baseline, os 4 melhores por acurácia no teste são selecionados.
 - A otimização de hiperparâmetros é feita com Optuna (não GridSearchCV), usando os espaços definidos em `config/models_config.py`. O melhor estimador é re-treinado e avaliado; métricas, relatórios e matrizes de confusão são gerados e logados no MLflow, garantindo modelos performáticos e robustos.
 
+### Instalação (Linux)
+1) Clonar e criar ambiente virtual
+```bash
+git clone https://github.com/PedroMeerholz/viagens-ml.git
+cd viagens-ml
+python -m venv venv
+source venv/bin/activate
+```
+2) Instalar dependências (Linux)
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+3) Definir `.env` conforme seção de variáveis de ambiente
+
+### Instalação (Windows)
+1) Clonar e criar ambiente virtual (PowerShell)
+```bash
+git clone https://github.com/PedroMeerholz/viagens-ml.git
+cd viagens-ml
+python -m venv venv
+./venv/Scripts/Activate.ps1
+```
+2) Instalar dependências (Windows)
+```bash
+python -m pip install --upgrade pip
+pip install -r requirements-windows.txt
+```
+3) Definir `.env` conforme seção de variáveis de ambiente
+
 ### MLflow
 - Configuração em `main.py`:
   - `mlflow.set_tracking_uri('http://localhost:5000')`
@@ -99,20 +129,11 @@ Algumas funções dependem destas variáveis (definir no `.env`):
 Certifique-se de que os diretórios existem ou serão criados pelo seu processo de execução.
 
 ### Como Executar (pipeline local)
-1) Clonar e instalar dependências
-```bash
-git clone https://github.com/PedroMeerholz/viagens-ml.git
-cd viagens-ml
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-2) Definir `.env` conforme seção de variáveis de ambiente
-3) Subir o MLflow server
+1) (Após a instalação) Subir o MLflow server
 ```bash
 mlflow server
 ```
-4) Executar a pipeline
+2) Executar a pipeline
 ```bash
 python main.py
 ```
