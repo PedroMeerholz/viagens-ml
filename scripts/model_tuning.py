@@ -26,7 +26,6 @@ def run_model_tuning(x_train, y_train, x_val, y_val, x_test, y_test, label_encod
         # Faz o treinamento de cada modelo baseline configurado em MODELOS
         for model in models:
             with mlflow.start_run(run_name=f'{model}_baseline', nested=True):
-                print(model)
                 # Atribui a instância default do modelo
                 clf = MODELOS[model]
 
@@ -92,7 +91,6 @@ def run_model_tuning(x_train, y_train, x_val, y_val, x_test, y_test, label_encod
         optimized_report_dir_path = os.environ['OPTIMIZED_RESULTS_DIR']
         for model in best_models:
             with mlflow.start_run(run_name=f'{model[0]}_optimized', nested=True):
-                print(model[0])
                 # Instancia o modelo e o grid de parâmetros
                 clf = MODELOS[model[0]]
                 param_grid = PARAM_GRIDS[model[0]]
