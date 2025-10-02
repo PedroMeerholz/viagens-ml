@@ -94,6 +94,37 @@ def plot_detailed_overview(trials_df):
     remove(plot_path)
 
 
+def plot_train_vs_val_overview(trials_df):
+    """
+    Plota um comparativo entre o resultado de treino e validação do modelo durante a otimização do Optuna.
+    Espera que o trials_df contenha as colunas 'user_attrs_train_score' e 'value' (validação).
+    """
+    load_dotenv()
+    image_dir_path = environ['PLOT_DIR_PATH']
+
+    if 'user_attrs_train_accuracy' not in trials_df.columns or 'value' not in trials_df.columns:
+        print("O DataFrame de trials não contém as colunas necessárias para o comparativo de treino vs validação.")
+        return
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(trials_df['number'], trials_df['user_attrs_train_accuracy'], label='Acurácia Treino', marker='o')
+    plt.plot(trials_df['number'], trials_df['value'], label='Acurácia Validação', marker='o')
+    plt.xlabel("Número do Trial")
+    plt.ylabel("Acurácia")
+    plt.title("Comparativo de Acurácia: Treino vs Validação durante a Otimização")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+
+    # Salvar e logar o gráfico
+    plot_path = f"{image_dir_path}/train_vs_val_comparison.png"
+    plt.savefig(plot_path)
+    log_artifact(local_path=plot_path)
+    plt.close()
+    remove(plot_path)
+
+
+
 def plot_confusion_matrix(confusion_matrix):
     load_dotenv()
     image_dir_path = environ['PLOT_DIR_PATH']

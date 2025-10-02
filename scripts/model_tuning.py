@@ -9,19 +9,19 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import mlflow
-import pandas as pd
 import json
 import optuna
+from sklearn.metrics import accuracy_score
 from models.models_config import MODELOS, PARAM_GRIDS
 from models.tuning_evaluate import predict, get_classification_report, get_confusion_matrix
-from artifacts_generation.plot_results import plot_detailed_overview, plot_general_overview, plot_confusion_matrix
+from artifacts_generation.plot_results import plot_detailed_overview, plot_general_overview, plot_train_vs_val_overview, plot_confusion_matrix
 
 
 def run_model_tuning(x_train, y_train, x_val, y_val, x_test, y_test, label_encoder):
     with mlflow.start_run(run_name="Treinamento e Otimização de Modelos", nested=True):
         baseline_report_dir_path = os.environ['BASELINE_RESULTS_DIR']
 
-        models = list(MODELOS.keys())[1:2]
+        models = list(MODELOS.keys())
         baseline_models_info = dict()
         # Faz o treinamento de cada modelo baseline configurado em MODELOS
         for model in models:
@@ -101,13 +101,18 @@ def run_model_tuning(x_train, y_train, x_val, y_val, x_test, y_test, label_encod
                     grid = param_grid(trial)
                     temp_model = clf.__class__(**grid)
                     temp_model.fit(x_train, y_train)
+
+                    train_prediction = temp_model.predict(x_train)
+                    train_accuracy = accuracy_score(y_train, train_prediction)
+
+                    trial.set_user_attr("train_accuracy", train_accuracy)
                     return temp_model.score(x_val, y_val)
 
                 # Faz a otimização do modelo
                 study = optuna.create_study(direction='maximize')
                 study.optimize(
                     lambda trial: objective(trial, clf, param_grid, x_train, y_train, x_val, y_val),
-                    n_trials=2
+                    n_trials=50
                 )
 
                 # Treina o melhor modelo
@@ -119,6 +124,7 @@ def run_model_tuning(x_train, y_train, x_val, y_val, x_test, y_test, label_encod
                 trials_df = study.trials_dataframe()
                 plot_general_overview(trials_df, study.best_trial, study.best_value)
                 plot_detailed_overview(trials_df)
+                plot_train_vs_val_overview(trials_df)
 
                 # Faz o log das métricas de treino
                 prediction, acc_train, precision_train, recall_train, f1_train = predict(best_estimator, x_train, y_train)
