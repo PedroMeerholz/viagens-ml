@@ -5,10 +5,14 @@ import streamlit as st
 import pandas as pd
 import joblib
 
-# Caminhos
-DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "raw" / "dataset_viagens_brasil.csv"
-MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "xgboost.pkl"
-ENCODER_PATH = Path(__file__).resolve().parents[1] / "models" / "label_encoder.pkl"
+# --- CONFIGURAÇÃO DE CAMINHOS (ROBUSTA) ---
+try:
+    APP_ROOT = Path(__file__).resolve().parents[1]
+except (NameError, IndexError):
+    APP_ROOT = Path.cwd()
+
+DATA_PATH = APP_ROOT / "data" / "raw" / "dataset_viagens_brasil.csv"
+MODEL_PATH = APP_ROOT / "models" / "xgboost.pkl"
 
 MIN_DESTINO_SAMPLE = 100
 DESTINO_OUTROS_LABEL = "Outros Destino"
@@ -38,6 +42,7 @@ def load_city_metadata(min_samples: int = MIN_DESTINO_SAMPLE):
     origem = set()
     destino_counts = Counter()
     if not DATA_PATH.exists():
+        st.error(f"⚠️ Arquivo de dados não encontrado em: {DATA_PATH}")
         return sorted(origem), [], {}
 
     with DATA_PATH.open(encoding="utf-8") as csvfile:
@@ -62,180 +67,216 @@ def load_city_metadata(min_samples: int = MIN_DESTINO_SAMPLE):
 
     return sorted(origem), destinos_principais, destino_decoder
 
-@st.cache_resource
-def load_saved_label_encoder():
-    if not ENCODER_PATH.exists():
-        return None
-    try:
-        return joblib.load(ENCODER_PATH)
-    except Exception:
-        return None
-
 def decode_destination_label(pred_code, destino_decoder):
-    label_encoder = load_saved_label_encoder()
-    if label_encoder is not None:
-        try:
-            return label_encoder.inverse_transform([pred_code])[0], True
-        except Exception:
-            pass
-
     try:
         numeric_code = int(pred_code)
     except (TypeError, ValueError):
-        return str(pred_code), False
+        return f"Predição Inválida: {pred_code}"
 
     if destino_decoder:
-        return destino_decoder.get(numeric_code, str(pred_code)), False
+        return destino_decoder.get(numeric_code, f"Código Desconhecido: {pred_code}")
 
-    return str(pred_code), False
+    return str(pred_code)
 
-# ---------------- INTERFACE PRINCIPAL ----------------
-def build_form():
+# ---------------- PÁGINAS DA APLICAÇÃO ----------------
+def pagina_entrada():
     st.markdown(
         """
         <h1 style="text-align:center; color:white; font-size:42px;">
             🧭 Recomendador de Viagens
         </h1>
-        <p style="text-align:center; color:#white; font-size:18px;">
+        <p style="text-align:center; color:white; font-size:18px;">
             Descubra o destino ideal com base no seu perfil e preferências ✈️
         </p>
-        <hr>
+        <hr style="border-color: #444;">
         """,
         unsafe_allow_html=True
     )
 
     origem_options, destino_labels, destino_decoder = load_city_metadata()
 
-    # Controlador de aba ativa
-    if "active_tab" not in st.session_state:
-        st.session_state["active_tab"] = "📝 Entrada"
+    with st.form("travel_preferences_form"):
+        col1, col2 = st.columns(2)
 
-    # Criar menu de navegação manual 
-    menu = st.radio(
-        "📌 Navegação",
-        ["📝 Entrada", "🎯 Resultado", "ℹ️ Detalhes"],
-        index=["📝 Entrada", "🎯 Resultado", "ℹ️ Detalhes"].index(st.session_state["active_tab"]),
-        horizontal=True
-    )
+        with col1:
+            idade = st.number_input("👤 Idade", min_value=1, max_value=100, value=30, step=1)
+            cidade_origem = st.selectbox("🏠 Cidade de origem", ["Selecione..."] + origem_options, index=0) if origem_options else st.text_input("🏠 Cidade de origem")
+            custo_desejado = st.number_input("💰 Custo desejado (R$)", min_value=1100.0, max_value=30000.0, value=1100.0, step=100.0, format="%.2f")
 
-    st.session_state["active_tab"] = menu  # Atualiza aba ativa
+        with col2:
+            st.markdown("<p style='text-align: center; font-weight: bold;'>✨ Suas Preferências (0 a 5)</p>", unsafe_allow_html=True)
+            prefere_praia = st.slider("🏖️ Praia", 0, 5, 3)
+            prefere_natureza = st.slider("🌳 Natureza", 0, 5, 3)
+            prefere_cultura = st.slider("🎭 Cultura", 0, 5, 3)
+            prefere_festas = st.slider("🎉 Festas", 0, 5, 3)
+            prefere_gastronomia = st.slider("🍷 Gastronomia", 0, 5, 3)
+            prefere_compras = st.slider("🛍️ Compras", 0, 5, 3)
 
-    # ------------------ ENTRADA ------------------
-    if st.session_state["active_tab"] == "📝 Entrada":
-        with st.form("travel_preferences"):
-            col1, col2 = st.columns(2)
+        st.markdown("<br>", unsafe_allow_html=True)
+        submitted = st.form_submit_button("🔍 Calcular Destino Ideal")
 
-            with col1:
-                idade = st.number_input("👤 Idade", min_value=0, max_value=120, value=30, step=1)
-                if origem_options:
-                    origem_select = ["Selecione..."] + origem_options
-                    cidade_origem = st.selectbox("🏠 Cidade de origem", origem_select, index=0)
-                else:
-                    cidade_origem = st.text_input("🏠 Cidade de origem")
-                custo_desejado = st.number_input("💰 Custo desejado (R$)", min_value=0.0, step=100.0, format="%.2f")
+    if submitted:
+        if (origem_options and cidade_origem == "Selecione...") or (not origem_options and not cidade_origem.strip()):
+            st.warning("⚠️ Por favor, selecione ou informe uma cidade de origem.")
+            return
 
-            with col2:
-                st.markdown("**✨ Preferências (0 a 5)**")
-                prefere_praia = st.slider("🏖️ Praia", 0, 5, 3)
-                prefere_natureza = st.slider("🌳 Natureza", 0, 5, 3)
-                prefere_cultura = st.slider("🎭 Cultura", 0, 5, 3)
-                prefere_festas = st.slider("🎉 Festas", 0, 5, 3)
-                prefere_gastronomia = st.slider("🍷 Gastronomia", 0, 5, 3)
-                prefere_compras = st.slider("🛍️ Compras", 0, 5, 3)
+        features = {
+            "Idade": int(idade), "Cidade_Origem": cidade_origem.strip(), "Custo_Desejado": float(custo_desejado),
+            "Prefere_Praia": int(prefere_praia), "Prefere_Natureza": int(prefere_natureza),
+            "Prefere_Cultura": int(prefere_cultura), "Prefere_Festas": int(prefere_festas),
+            "Prefere_Gastronomia": int(prefere_gastronomia), "Prefere_Compras": int(prefere_compras),
+        }
 
-            submitted = st.form_submit_button("🔍 Calcular Destino")
+        st.session_state.user_features = features
+        st.session_state.destino_labels = destino_labels
+        st.session_state.destino_decoder = destino_decoder
+        st.session_state.page = "🎯 Resultado"
+        st.rerun()
 
-        if submitted:
-            if origem_options and cidade_origem == "Selecione...":
-                st.warning("⚠️ Selecione uma cidade de origem.")
-                return
-            if not origem_options and not cidade_origem.strip():
-                st.warning("⚠️ Informe uma cidade de origem.")
-                return
+def pagina_resultado():
+    st.markdown("<h1 style='text-align:center; color:white;'>🎯 Resultado da Recomendação</h1>", unsafe_allow_html=True)
 
-            # Features do usuário
-            features = {
-                "Idade": int(idade),
-                "Cidade_Origem": cidade_origem.strip(),
-                "Custo_Desejado": float(custo_desejado),
-                "Prefere_Praia": int(prefere_praia),
-                "Prefere_Natureza": int(prefere_natureza),
-                "Prefere_Cultura": int(prefere_cultura),
-                "Prefere_Festas": int(prefere_festas),
-                "Prefere_Gastronomia": int(prefere_gastronomia),
-                "Prefere_Compras": int(prefere_compras),
-            }
-
-            st.session_state["features"] = features
-            st.session_state["destino_labels"] = destino_labels
-            st.session_state["destino_decoder"] = destino_decoder
-
-            # Forçar troca para aba Resultado
-            st.session_state["active_tab"] = "🎯 Resultado"
+    if "user_features" not in st.session_state:
+        st.info("➡️ Preencha suas preferências na página de Entrada para ver a recomendação.")
+        if st.button("Ir para Entrada"):
+            st.session_state.page = "📝 Entrada"
             st.rerun()
+        return
 
-    # ------------------ RESULTADO ------------------
-    elif st.session_state["active_tab"] == "🎯 Resultado":
-        if "features" not in st.session_state:
-            st.info("➡️ Preencha o formulário na aba **Entrada**.")
-        else:
-            features = st.session_state["features"]
-            destino_decoder = st.session_state["destino_decoder"]
+    if not MODEL_PATH.exists():
+        st.error(f"❌ Modelo não encontrado em: {MODEL_PATH}")
+        return
 
-            model_input = pd.DataFrame([features]).drop(columns=["Cidade_Origem"])
-            if not MODEL_PATH.exists():
-                st.error("❌ Modelo não encontrado.")
-                return
+    features = st.session_state.user_features
+    decoder = st.session_state.destino_decoder
+    
+    model_input = pd.DataFrame([features]).drop(columns=["Cidade_Origem"])
 
-            with st.spinner("🔮 Carregando modelo e prevendo..."):
-                model = joblib.load(MODEL_PATH)
-                pred = model.predict(model_input)[0]
-                destino, _ = decode_destination_label(pred, destino_decoder)
+    with st.spinner("🔮 Analisando suas preferências e calculando o destino..."):
+        model = joblib.load(MODEL_PATH)
+        prediction_code = model.predict(model_input)[0]
+        destino_final = decode_destination_label(prediction_code, decoder)
 
-            st.markdown(
-                f"""
-                <div style="background: linear-gradient(135deg, #2ECC71, #27AE60);
-                            padding:20px; border-radius:15px; color:white;
-                            text-align:center; font-size:22px; font-weight:bold;
-                            box-shadow: 2px 2px 12px rgba(0,0,0,0.3);">
-                    🌍 Destino previsto:<br><span style="font-size:28px;">{destino}</span>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-    # ------------------ DETALHES ------------------
-    elif st.session_state["active_tab"] == "ℹ️ Detalhes":
-        st.markdown("### ℹ️ Sobre este recomendador")
-        st.write(
-            "Este aplicativo usa um modelo de IA treinado com dados de viagens no Brasil. "
-            "Com base nas suas preferências, ele recomenda um destino turístico."
-        )
-
-        if "destino_labels" in st.session_state:
-            st.markdown("**📍 Destinos considerados pelo modelo:**")
-            st.write(", ".join(st.session_state["destino_labels"]))
-
-# ---------------- MAIN ----------------
-def main():
-    st.set_page_config(page_title="Recomendador de Viagens", page_icon="✈️", layout="wide")
-
-    st.sidebar.image("https://cdn-icons-png.flaticon.com/512/69/69906.png", width=80)
-    st.sidebar.title("Recomendador de Viagens")
-    st.sidebar.markdown("✨ Preencha seus dados e descubra para onde viajar no Brasil!")
-    st.sidebar.markdown(
-        """
-        <div style="background-color:#E74C3C; padding:15px; border-radius:10px;
-                    color:white; font-weight:bold; text-align:center;
-                    box-shadow:2px 2px 10px rgba(0,0,0,0.3);">
-            ⚠️ Este conteúdo é destinado apenas para fins educacionais.<br>
-            Os dados exibidos são ilustrativos e podem não corresponder a situações reais.
+    st.markdown(
+        f"""
+        <div style="background: linear-gradient(135deg, #2ECC71, #27AE60); padding: 30px; border-radius: 20px; color: white; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.4); margin-top: 30px;">
+            <p style="font-size: 24px; margin-bottom: 10px; font-weight: bold;">Seu destino ideal é:</p>
+            <p style="font-size: 42px; font-weight: 800; margin: 0;">{destino_final}</p>
         </div>
         """,
         unsafe_allow_html=True
     )
+    
+    if st.button("↩️ Fazer nova consulta"):
+        st.session_state.page = "📝 Entrada"
+        if 'user_features' in st.session_state:
+            del st.session_state['user_features']
+        st.rerun()
 
-    build_form()
+def pagina_detalhes():
+    st.markdown("<h1 style='text-align:center; color:white;'>ℹ️ Detalhes do Projeto</h1>", unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown("### Sobre o Recomendador")
+    st.write(
+        """
+        Este aplicativo utiliza um modelo de Machine Learning (Árvore de Decisão) treinado com um 
+        conjunto de dados de viagens fictícias no Brasil. Ele analisa as preferências de perfil, 
+        custo e interesses para sugerir o destino de viagem mais provável para o usuário.
+        """
+    )
+
+    if "destino_labels" in st.session_state and st.session_state["destino_labels"]:
+        st.markdown("### 📍 Destinos Considerados pelo Modelo")
+        st.info(", ".join(sorted(st.session_state["destino_labels"])))
+    else:
+        _, destino_labels, _ = load_city_metadata()
+        if destino_labels:
+            st.markdown("### 📍 Destinos Considerados pelo Modelo")
+            st.info(", ".join(sorted(destino_labels)))
+
+# ---------------- FUNÇÃO PRINCIPAL ----------------
+def main():
+    st.set_page_config(page_title="Recomendador de Viagens", page_icon="✈️", layout="wide")
+
+    # --- CSS ---
+    st.markdown("""
+    <style>
+        div[data-testid="stFormSubmitButton"] {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        div[data-testid="stFormSubmitButton"] > button {
+            width: 280px; /* Aumentado */
+            height: 70px; /* Aumentado */
+            justify-content: center;
+            font-size: 24px; /* Aumentado */
+            font-weight: bold;
+            border-radius: 15px; /* Aumentado */
+            background: linear-gradient(135deg, #ff416c, #ff4b2b);
+            color: white;
+            border: none;
+            box-shadow: 0 8px 25px rgba(255, 65, 108, 0.6);
+            transition: all 0.3s ease;
+        }
+        div[data-testid="stFormSubmitButton"] > button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 35px rgba(255, 65, 108, 0.8);
+        }
+
+        div[data-testid="stButton"] {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        /* Ajuste para botões da sidebar e outros botões de ação */
+        div[data-testid="stButton"] > button {
+            width: 100%; /* Para botões na sidebar com use_container_width */
+            height: 70px; /* Aumentado */
+            font-size: 24px; /* Aumentado */
+            font-weight: bold;
+            border-radius: 15px; /* Aumentado */
+            background: linear-gradient(135deg, #ff416c, #ff4b2b);
+            color: white;
+            border: none;
+            box-shadow: 0 8px 25px rgba(255, 65, 108, 0.6);
+            transition: all 0.3s ease;
+            margin-top: 20px; /* Ajuste na margem */
+        }
+        div[data-testid="stButton"] > button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 35px rgba(255, 65, 108, 0.8);
+        }
+        
+        /* Específico para botões que não estão na sidebar (para manter a largura fixa) */
+        div[data-testid="stAppViewContainer"] div[data-testid="stButton"] > button {
+            width: 280px;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+
+    with st.sidebar:
+        st.image("https://cdn-icons-png.flaticon.com/512/69/69906.png", width=100)  
+        st.title("Recomendador de Viagens")
+        st.markdown("✨ Preencha seus dados e descubra para onde viajar no Brasil!")
+        st.markdown("---")
+
+        if "page" not in st.session_state:
+            st.session_state.page = "📝 Entrada"
+
+        pages = ["📝 Entrada", "🎯 Resultado", "ℹ️ Detalhes"]
+        for page in pages:
+            if st.button(page, use_container_width=True):
+                st.session_state.page = page
+                st.rerun()
+
+    if st.session_state.page == "📝 Entrada":
+        pagina_entrada()
+    elif st.session_state.page == "🎯 Resultado":
+        pagina_resultado()
+    elif st.session_state.page == "ℹ️ Detalhes":
+        pagina_detalhes()
 
 if __name__ == "__main__":
     main()
