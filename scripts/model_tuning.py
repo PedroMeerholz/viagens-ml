@@ -1,5 +1,4 @@
 from dotenv import load_dotenv
-from sklearn.ensemble import RandomForestClassifier
 load_dotenv()
 
 import sys
@@ -18,7 +17,7 @@ from models.tuning_evaluate import predict, get_classification_report, get_confu
 from artifacts_generation.plot_results import plot_detailed_overview, plot_general_overview, plot_confusion_matrix
 
 
-def run_model_tuning(x_train, y_train, x_val, y_val, x_test, y_test):
+def run_model_tuning(x_train, y_train, x_val, y_val, x_test, y_test, label_encoder):
     with mlflow.start_run(run_name="Treinamento e Otimização de Modelos", nested=True):
         baseline_report_dir_path = os.environ['BASELINE_RESULTS_DIR']
 
@@ -157,9 +156,9 @@ def run_model_tuning(x_train, y_train, x_val, y_val, x_test, y_test):
             plot_confusion_matrix(model_name, confusion_matrix)
 
             # Faz o log das previsões de teste
-            # prediction_mapped = label_encoder.transform(prediction) # TODO Corrigir mapeamento
+            prediction_mapped = label_encoder.inverse_transform(prediction)
             test_predictions_df = x_test.copy()
-            test_predictions_df['prediction'] = prediction
+            test_predictions_df['prediction'] = prediction_mapped
             test_predictions_df.to_csv(f'{optimized_report_dir_path}/test_predictions.csv', index=False)
             mlflow.log_artifact(
                 local_path=f'{optimized_report_dir_path}/test_predictions.csv',

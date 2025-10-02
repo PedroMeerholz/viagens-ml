@@ -190,4 +190,4 @@ def run_data_preprocessing(df):
         mlflow.log_input(test_dataset, context='testing')
         del train_dataset, val_dataset, test_dataset
 
-        return x_train, x_val, x_test, y_train, y_val, y_test
+        return x_train, x_val, x_test, y_train, y_val, y_test, label_encoder
