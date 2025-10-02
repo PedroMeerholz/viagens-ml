@@ -191,7 +191,7 @@ def pagina_detalhes():
     st.markdown("### Sobre o Recomendador")
     st.write(
         """
-        Este aplicativo utiliza um modelo de Machine Learning (Árvore de Decisão) treinado com um 
+        Este aplicativo utiliza um modelo de Inteligência Artificial treinado com um 
         conjunto de dados de viagens fictícias no Brasil. Ele analisa as preferências de perfil, 
         custo e interesses para sugerir o destino de viagem mais provável para o usuário.
         """
@@ -262,9 +262,36 @@ def main():
             width: 280px;
         }
     </style>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
+    # --- ALERTA INICIAL ---
+    if 'disclaimer_accepted' not in st.session_state:
+        st.session_state.disclaimer_accepted = False
 
+    if not st.session_state.disclaimer_accepted:
+        _, mid_col, _ = st.columns([1, 2, 1])
+        with mid_col:
+            st.markdown(
+                """
+                <div style="background-color: #262730; padding: 30px; border-radius: 15px; border: 1px solid #ff4b2b; margin-top: 10vh;">
+                    <h2 style="text-align: center; color: #ff4b2b;">⚠️ Aviso Importante</h2>
+                    <p style="text-align: center; font-size: 18px; color: white;">
+                        Este conteúdo é destinado apenas para fins educacionais. 
+                        Os dados exibidos são ilustrativos e podem não corresponder a situações reais.
+                    </p>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            st.markdown("<br>", unsafe_allow_html=True)
+            _, btn_col, _ = st.columns([2, 1, 2])
+            with btn_col:
+                if st.button("OK", use_container_width=True):
+                    st.session_state.disclaimer_accepted = True
+                    st.rerun()
+        return  # Impede o resto de rodar antes da aceitação
+
+    # --- SIDEBAR ---
     with st.sidebar:
         st.image("https://cdn-icons-png.flaticon.com/512/69/69906.png", width=100)  
         st.title("Recomendador de Viagens")
