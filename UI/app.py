@@ -7,7 +7,7 @@ import joblib
 
 # Caminhos
 DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "raw" / "dataset_viagens_brasil.csv"
-MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "decision_tree.pkl"
+MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "xgboost.pkl"
 ENCODER_PATH = Path(__file__).resolve().parents[1] / "models" / "label_encoder.pkl"
 
 MIN_DESTINO_SAMPLE = 100
