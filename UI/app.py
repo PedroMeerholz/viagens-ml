@@ -4,14 +4,17 @@ from pathlib import Path
 import streamlit as st
 import pandas as pd
 import joblib
+import requests
+from io import StringIO
 
-# --- CONFIGURAÇÃO DE CAMINHOS (ROBUSTA) ---
+# --- CONFIGURAÇÃO DE CAMINHOS ---
 try:
     APP_ROOT = Path(__file__).resolve().parents[1]
 except (NameError, IndexError):
     APP_ROOT = Path.cwd()
 
-DATA_PATH = APP_ROOT / "data" / "raw" / "dataset_viagens_brasil.csv"
+# --- CARREGAR DATASET DO S3 ---
+DATA_PATH = 'https://viagens-ml.s3.sa-east-1.amazonaws.com/dataset_viagens_brasil.csv'
 MODEL_PATH = APP_ROOT / "models" / "xgboost.pkl"
 
 MIN_DESTINO_SAMPLE = 100
@@ -41,11 +44,20 @@ def build_destino_decoder(destino_counts: Counter, min_samples: int):
 def load_city_metadata(min_samples: int = MIN_DESTINO_SAMPLE):
     origem = set()
     destino_counts = Counter()
-    if not DATA_PATH.exists():
-        st.error(f"⚠️ Arquivo de dados não encontrado em: {DATA_PATH}")
+    
+    try:
+        if str(DATA_PATH).startswith("http"):
+            response = requests.get(DATA_PATH)
+            response.raise_for_status()
+            # Forçar leitura como UTF-8
+            csvfile = StringIO(response.content.decode('utf-8'))
+        else:
+            csvfile = open(DATA_PATH, encoding="utf-8")
+    except Exception as e:
+        st.error(f"⚠️ Não foi possível abrir o arquivo de dados: {e}")
         return sorted(origem), [], {}
-
-    with DATA_PATH.open(encoding="utf-8") as csvfile:
+    
+    with csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
             origem_cidade = (row.get("Cidade_Origem") or "").strip()
@@ -207,12 +219,12 @@ def main():
             align-items: center;
         }
         div[data-testid="stFormSubmitButton"] > button {
-            width: 280px; /* Aumentado */
-            height: 70px; /* Aumentado */
+            width: 280px; 
+            height: 70px; 
             justify-content: center;
-            font-size: 24px; /* Aumentado */
+            font-size: 24px; 
             font-weight: bold;
-            border-radius: 15px; /* Aumentado */
+            border-radius: 15px; 
             background: linear-gradient(135deg, #ff416c, #ff4b2b);
             color: white;
             border: none;
@@ -229,26 +241,23 @@ def main():
             justify-content: center;
             align-items: center;
         }
-        /* Ajuste para botões da sidebar e outros botões de ação */
         div[data-testid="stButton"] > button {
-            width: 100%; /* Para botões na sidebar com use_container_width */
-            height: 70px; /* Aumentado */
-            font-size: 24px; /* Aumentado */
+            width: 100%; 
+            height: 70px;
+            font-size: 24px;
             font-weight: bold;
-            border-radius: 15px; /* Aumentado */
+            border-radius: 15px; 
             background: linear-gradient(135deg, #ff416c, #ff4b2b);
             color: white;
             border: none;
             box-shadow: 0 8px 25px rgba(255, 65, 108, 0.6);
             transition: all 0.3s ease;
-            margin-top: 20px; /* Ajuste na margem */
+            margin-top: 20px; 
         }
         div[data-testid="stButton"] > button:hover {
             transform: scale(1.05);
             box-shadow: 0 12px 35px rgba(255, 65, 108, 0.8);
         }
-        
-        /* Específico para botões que não estão na sidebar (para manter a largura fixa) */
         div[data-testid="stAppViewContainer"] div[data-testid="stButton"] > button {
             width: 280px;
         }
