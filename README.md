@@ -56,6 +56,26 @@ Este projeto constrói um sistema de recomendação de destinos de viagem no Bra
 - Catálogo de modelos em `config/models_config.py` (RandomForest, DecisionTree, LogisticRegression, SVC, GradientBoosting, AdaBoost, ExtraTrees, SGDClassifier, BernoulliNB, XGBoost)
 - Espaços de busca definidos via funções `PARAM_GRIDS[modelo](trial)` (Optuna)
 
+Resumo dos modelos baseline (visão curta):
+- Árvores e ensembles:
+  - DecisionTreeClassifier: regras de decisão simples, interpretável.
+  - RandomForestClassifier: várias árvores agregadas, mais robusto e reduz overfitting.
+  - GradientBoostingClassifier: árvores sequenciais corrigindo erros, costuma performar bem.
+  - AdaBoostClassifier: boosting que dá mais peso a erros anteriores.
+  - ExtraTreesClassifier: mais aleatoriedade nos splits, rápido e com menor variância.
+  - XGBClassifier: implementação otimizada de gradient boosting, alta performance.
+- Lineares:
+  - LogisticRegression: modela probabilidade de classe, baseline sólido.
+  - SGDClassifier: classificador linear otimizado por gradiente estocástico, eficiente em escala.
+- SVM:
+  - SVC: separa classes com hiperplano ótimo, eficaz em alta dimensionalidade.
+- Naive Bayes:
+  - BernoulliNB: adequado a variáveis binárias (0/1).
+
+Seleção e otimização:
+- Após avaliar os modelos baseline, os 4 melhores por acurácia no teste são selecionados.
+- A otimização de hiperparâmetros é feita com Optuna (não GridSearchCV), usando os espaços definidos em `config/models_config.py`. O melhor estimador é re-treinado e avaliado; métricas, relatórios e matrizes de confusão são gerados e logados no MLflow, garantindo modelos performáticos e robustos.
+
 ### MLflow
 - Configuração em `main.py`:
   - `mlflow.set_tracking_uri('http://localhost:5000')`
