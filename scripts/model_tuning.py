@@ -120,8 +120,8 @@ def run_model_tuning(x_train, y_train, x_val, y_val, x_test, y_test, label_encod
             model_name = f'optimized_{model[0]}'
 
             # TODO Corrigir para utiliar trials_df
-            # plot_general_overview(model_name, trials_df, study.best_trial, study.best_value)
-            # plot_detailed_overview(model_name, trials_df)
+            plot_general_overview(model_name, trials_df, study.best_trial, study.best_value)
+            plot_detailed_overview(model_name, trials_df)
 
             # Faz o log das métricas de treino
             prediction, acc_train, precision_train, recall_train, f1_train = predict(best_estimator, x_train, y_train)
