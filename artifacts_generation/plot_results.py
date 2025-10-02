@@ -6,7 +6,7 @@ from mlflow import log_artifact
 from dotenv import load_dotenv
 
 
-def plot_general_overview(model, trials_df, best_trial, best_score):
+def plot_general_overview(trials_df, best_trial, best_score):
     load_dotenv()
     image_dir_path = environ['PLOT_DIR_PATH']
 
@@ -52,12 +52,12 @@ def plot_general_overview(model, trials_df, best_trial, best_score):
     # Salvar o gráfico como um arquivo temporário
     plot_path = f"{image_dir_path}/grid_search_metrics_evolution.png"
     plt.savefig(plot_path)
-    log_artifact(local_path=plot_path, artifact_path=model)
+    log_artifact(local_path=plot_path)
     plt.close()
     remove(plot_path)
 
 
-def plot_detailed_overview(model, trials_df):
+def plot_detailed_overview(trials_df):
     load_dotenv()
     image_dir_path = environ['PLOT_DIR_PATH']
 
@@ -89,12 +89,12 @@ def plot_detailed_overview(model, trials_df):
     # Salvar e Logar o gráfico
     plot_path = f"{image_dir_path}/grid_search_individual_metrics_lines.png"
     fig.savefig(plot_path)
-    log_artifact(local_path=plot_path, artifact_path=model)
+    log_artifact(local_path=plot_path)
     plt.close()
     remove(plot_path)
 
 
-def plot_confusion_matrix(model, confusion_matrix):
+def plot_confusion_matrix(confusion_matrix):
     load_dotenv()
     image_dir_path = environ['PLOT_DIR_PATH']
 
@@ -108,7 +108,7 @@ def plot_confusion_matrix(model, confusion_matrix):
     # Salvar e Logar o gráfico
     plot_path = f"{image_dir_path}/confusion_matrix.png"
     fig.savefig(plot_path)
-    log_artifact(local_path=plot_path, artifact_path=model)
+    log_artifact(local_path=plot_path)
     plt.close()
     remove(plot_path)
         
